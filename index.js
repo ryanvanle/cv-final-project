@@ -25,6 +25,16 @@
       console.log("working")
     });
 
+    //todo
+    // see if the model works during the day, it seems like it doesnt work as well in night
+    // (not detecting in easy cases to humans)
+    // tracking, so only moving cars can work
+    // display results to user
+    // image, object
+    // display if video is invalid for some reason
+
+    // send to user
+
     video.addEventListener('loadeddata', function() {
       let canvas = id("canvas");
       canvas.width = id("videoPlayer").videoWidth;
