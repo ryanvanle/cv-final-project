@@ -1,0 +1,19 @@
+#video-container {
+  display: flex;
+  width: 75%;
+}
+
+#video-container canvas {
+  width: 100%;
+  margin-left: -100%;
+  z-index: 2;
+}
+
+#video-container video {
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  background-image: url("img/loading.gif");
+  background-repeat: no-repeat;
+  background-position: center;
+}
