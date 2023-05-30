@@ -10,6 +10,8 @@
   let placeToData = new Map();
   let PLACES = [];
   let timerIdArray = [];
+  let detector;
+  let video;
 
   function init() {
     getData();
@@ -19,11 +21,8 @@
       setupCamera(this.value);
     });
 
-    //load model
-    let video = document.getElementById('videoPlayer');
-    let detector = ml5.objectDetector('yolo', {}, function() {
-      console.log("working")
-    });
+    video = document.getElementById('videoPlayer');
+    detector = ml5.objectDetector('cocossd', {}, function() { console.log("working") });
 
     //todo
     // see if the model works during the day, it seems like it doesnt work as well in night
@@ -36,32 +35,79 @@
     // send to user
 
     video.addEventListener('loadeddata', function() {
+      let videoElement = id("videoPlayer");
       let canvas = id("canvas");
       canvas.width = id("videoPlayer").videoWidth;
       canvas.height = id("videoPlayer").videoHeight;
+      videoElement.width = videoElement.videoWidth;
+      videoElement.height = videoElement.videoHeight;
       resizeCanvasToDisplaySize(canvas);
-
-      let timerId = setInterval(function() {
-        const context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        detector.detect(video, (err, results) => {
-          if (results == null) return;
-          for (let i = 0; i < results.length; i++) {
-            let x = results[i].normalized.x;
-            let y = results[i].normalized.y;
-            let width = results[i].normalized.width;
-            let height = results[i].normalized.height;
-            drawRectangle(x, y, width, height);
-          }
-          console.log(results); // Will output bounding boxes of detected objects
-        });
-
-      }, 500)
-
-      timerIdArray.push(timerId);
-
+      runModel(detector, video);
     });
-    // // detector
+  }
+
+  function runModel(detector, video) {
+    detector.detect(video, gotResults);
+  }
+
+  function gotResults(error, results) {
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    let secondFrame;
+    setTimeout(function () {
+      secondFrame = detector.detect(video, getSecondFrame);
+    }, 500);
+
+    console.log(results)
+
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    let cars = [];
+    // get only cars
+    for (let i = 0; i < results.length; i++) {
+      let label = results[i]['label'];
+      if (label === "car") cars.push(results[i]);
+    }
+
+
+    for (let i = 0; i < cars.length; i++) {
+      let x = cars[i].normalized.x;
+      let y = cars[i].normalized.y;
+      let width = cars[i].normalized.width;
+      let height = cars[i].normalized.height;
+
+      resizeCanvasToDisplaySize(document.getElementById('canvas'));
+      const canvas = document.getElementById('canvas');
+      let canvasWidth = canvas.offsetWidth;
+      let canvasHeight = canvas.offsetHeight;
+
+      drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05);
+
+    }
+
+    setTimeout(function () {
+      detector.detect(video, gotResults);
+    }, 100)
+
+  }
+
+  function getSecondFrame(error, results) {
+    if (error) {
+      return [];
+    }
+
+    let cars = [];
+    // get only cars
+    for (let i = 0; i < results.length; i++) {
+      let label = results[i]['label'];
+      if (label === "car") cars.push(results[i]);
+    }
+
+    return cars;
   }
 
   function clearInput() {
@@ -77,15 +123,7 @@
     const context = canvas.getContext('2d');
     context.beginPath();
     context.strokeStyle = "#FF0000";
-    console.table(x, y, width, height);
-    console.table(canvasWidth, canvasHeight)
     context.rect(x*canvasWidth, y*canvasHeight, width*canvasWidth, height*canvasHeight);
-    // context.rect(0,0, 10, 10);
-    // context.rect(20,20, 10, 10);
-    // context.rect(40,40, 10, 10);
-    // context.rect(60,60, 10, 10);
-    // context.rect(80,80, 10, 10);
-    // context.rect(300, 80, 10, 10);
     context.stroke();
   }
 
@@ -173,7 +211,7 @@
     }
 
     id("location").textContent = locationName;
-    let video = document.getElementById('videoPlayer');
+    video = document.getElementById('videoPlayer');
     if (Hls.isSupported()) {
       let hls = new Hls();
       hls.loadSource(streamURL);
