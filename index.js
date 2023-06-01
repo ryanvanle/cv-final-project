@@ -50,71 +50,160 @@
     detector.detect(video, gotResults);
   }
 
-  function gotResults(error, results) {
+  async function gotResults(error, results) {
     if (error) {
       console.error(error);
       return;
     }
 
-    let secondFrame;
-    setTimeout(function () {
-      secondFrame = detector.detect(video, getSecondFrame);
-    }, 500);
 
-    console.log(results)
+    let secondFrame = await new Promise((resolve, reject) => {
+      setTimeout(() => {
+        detector.detect(video, getSecondFrame).then((result) => resolve(result)).catch(reject);
+      }, 250);
+    });
+
+    for (let i = results.length - 1; i >= 0; i--) {
+      if (results[i].width > 80 || results[i].height > 80) {
+        results.splice(i, 1);
+      }
+    }
+
+    for (let i = secondFrame.length - 1; i >= 0; i--) {
+      if (secondFrame[i].width > 80 || secondFrame[i].height > 80) {
+        secondFrame.splice(i, 1);
+      }
+    }
+
+    let cars = filterResults(results, secondFrame);
 
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    let cars = [];
-    // get only cars
+    // for (let i = 0; i < cars.length; i++) {
+    //   let x = cars[i].normalized.x;
+    //   let y = cars[i].normalized.y;
+    //   let width = cars[i].normalized.width;
+    //   let height = cars[i].normalized.height;
+
+
+    //   resizeCanvasToDisplaySize(document.getElementById('canvas'));
+    //   const canvas = document.getElementById('canvas');
+    //   let canvasWidth = canvas.offsetWidth;
+    //   let canvasHeight = canvas.offsetHeight;
+
+    //   drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#0000FF");
+    // }
+
     for (let i = 0; i < results.length; i++) {
-      let label = results[i]['label'];
-      if (label === "car") cars.push(results[i]);
-    }
+      let x = results[i].normalized.x;
+      let y = results[i].normalized.y;
+      let width = results[i].normalized.width;
+      let height = results[i].normalized.height;
 
-
-    for (let i = 0; i < cars.length; i++) {
-      let x = cars[i].normalized.x;
-      let y = cars[i].normalized.y;
-      let width = cars[i].normalized.width;
-      let height = cars[i].normalized.height;
 
       resizeCanvasToDisplaySize(document.getElementById('canvas'));
       const canvas = document.getElementById('canvas');
       let canvasWidth = canvas.offsetWidth;
       let canvasHeight = canvas.offsetHeight;
 
-      drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05);
-
+      drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#FF0000");
     }
 
-    setTimeout(function () {
-      detector.detect(video, gotResults);
-    }, 100)
+    for (let i = 0; i < secondFrame.length; i++) {
+      let x = secondFrame[i].normalized.x;
+      let y = secondFrame[i].normalized.y;
+      let width = secondFrame[i].normalized.width;
+      let height = secondFrame[i].normalized.height;
 
+
+      resizeCanvasToDisplaySize(document.getElementById('canvas'));
+      const canvas = document.getElementById('canvas');
+      let canvasWidth = canvas.offsetWidth;
+      let canvasHeight = canvas.offsetHeight;
+
+      drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#0000FF");
+    }
+
+
+    detector.detect(video, gotResults);
+
+  }
+
+
+  function filterResults(results, secondFrame) {
+    if (results.length != secondFrame.length) return [];
+
+
+    let resultCars = [];
+    for (let i = 0; i < results.length; i++) {
+      let label = results[i]['label'];
+      if (label === "car") resultCars.push(results[i]);
+    }
+
+    let secondFrameCars = [];
+    for (let i = 0; i < secondFrame.length; i++) {
+      let label = secondFrame[i]['label'];
+      if (label === "car") secondFrameCars.push(secondFrame[i]);
+    }
+
+    if (resultCars.length != secondFrameCars.length) return [];
+
+    console.log("r", resultCars);
+    console.log("s", secondFrameCars);
+
+
+    let movingCars = [];
+
+    let threshold = 0.5;
+
+    for (let i = 0; i < resultCars.length; i++) {
+      let obj1 = resultCars[i];
+      let obj2 = secondFrameCars[i];
+
+      let differenceX = Math.abs(obj1.x - obj2.x);
+      let differenceY = Math.abs(obj1.y - obj2.y);
+
+      console.log(differenceX, differenceY);
+
+      if (differenceX > threshold || differenceY > threshold) {
+        movingCars.push(obj1);
+      }
+    }
+
+    return movingCars;
   }
 
   function getSecondFrame(error, results) {
-    if (error) {
-      return [];
-    }
-
-    let cars = [];
-    // get only cars
-    for (let i = 0; i < results.length; i++) {
-      let label = results[i]['label'];
-      if (label === "car") cars.push(results[i]);
-    }
-
-    return cars;
+    return new Promise((resolve, reject) => {
+      let cars = [];
+      // get only cars
+      for (let i = 0; i < results.length; i++) {
+        let label = results[i]['label'];
+        if (label === "car") cars.push(results[i]);
+      }
+      resolve(cars);
+    });
   }
+
+
+  function updateActualVideo() {
+    let canvas = id("canvas");
+    let actual = id("actual");
+    actual.width = canvas.offsetWidth;
+    actual.height = canvas.offsetHeight;
+
+    var context = actual.getContext("2d");
+    context.drawImage(video,0,0);
+    context.drawImage(canvas,0,0);
+  }
+
 
   function clearInput() {
     qs("input").value = "";
   }
 
-  function drawRectangle(x, y, width, height) {
+  function drawRectangle(x, y, width, height, hex) {
     resizeCanvasToDisplaySize(document.getElementById('canvas'));
     const canvas = document.getElementById('canvas');
 
@@ -122,7 +211,7 @@
     let canvasHeight = canvas.offsetHeight;
     const context = canvas.getContext('2d');
     context.beginPath();
-    context.strokeStyle = "#FF0000";
+    context.strokeStyle = hex;
     context.rect(x*canvasWidth, y*canvasHeight, width*canvasWidth, height*canvasHeight);
     context.stroke();
   }
@@ -197,11 +286,13 @@
   }
 
   async function displayCamera(streamURL, locationName) {
-    let doesNotStreamExist = await fetch(streamURL).then(statusCheck404).catch(
-      function() {
-        doesNotStreamExist = false;
-      }
-    );
+    let doesNotStreamExist = await fetch(streamURL)
+      .then(statusCheck404)
+      .catch(
+        function() {
+          doesNotStreamExist = false;
+        }
+      );
 
 
     if (doesNotStreamExist) {
