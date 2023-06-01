@@ -13,3 +13,19 @@
   padding: 5px 10px;
   text-align: center;
 }
+
+
+#pano-processing {
+  /* display: flex; */
+}
+
+#pano {
+  height: 85vh; /* The height is 400 pixels */
+  width: 100%;
+}
+
+#input-canvas {
+  width: 100%;
+  background-color: rgba(0,0,255,0.1);  /* blue */
+}
+
