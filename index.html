@@ -5,31 +5,27 @@
     <meta charset="utf-8">
     <title>CV Final</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://docs.opencv.org/4.5.0/opencv.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@cloud-annotations/object-tracking"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+      (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+        key: "AIzaSyBrihFqby1UCOB9U0pMfSHauXWZlFtLfek",
+        v: "weekly",
+        // Use the 'v' parameter to indicate the version to use (weekly, beta, alpha, etc.).
+        // Add other bootstrap parameters as needed, using camel case.
+      });
+    </script>
     <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
     <script src="index.js" type="module"></script>
 </head>
 <body>
-
   <h1>CV final project by Ryan and Ashay</h1>
-  <h2>current location: <span id="location"></span></h2>
-
-  <section id="video-container">
-    <video id="videoPlayer" autoplay></video>
-    <canvas id="canvas"></canvas>
-
-  </section>
-
-  <input list="places" name="places">
-  <button id="clear">clear input</button>
-  <datalist id="places">
-  </datalist>
+  <section id="map"></section>
 
   <section>
-    <canvas id="actual"></canvas>
+    <h2>Point amount per box, little the better this aint free (;-;), 0.007 per point, 1-20</h2>
+    <input type="number" id="point-amount" name="point-amount"
+    min="10" max="30" value="10">
+    <button id="data">data</button>
   </section>
+
 </body>
 </html>

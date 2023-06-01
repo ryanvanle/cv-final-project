@@ -7,44 +7,258 @@
  */
   window.addEventListener("load", init);
 
-  let placeToData = new Map();
-  let PLACES = [];
-  let timerIdArray = [];
   let detector;
-  let video;
+  let selectedLocation = null;
+  let map, panorama;
+
+  let rectanglesWithPoints = [];
+  let drawingManager;
 
   function init() {
-    getData();
-    id("clear").addEventListener("click", clearInput);
-    qs("input").addEventListener("change", function () {
-      clearAllTimerId();
-      setupCamera(this.value);
+    initMap();
+    id("data").addEventListener("click", function() {
+      console.log(rectanglesWithPoints);
+    });
+    detector = ml5.objectDetector('cocossd', {}, function() { console.log("working") });
+  }
+
+  async function initMap() {
+    const { Map } = await google.maps.importLibrary("maps");
+    const {DrawingManager} = await google.maps.importLibrary("drawing")
+    const pointAmountInput = document.getElementById('point-amount'); // Get the input element for point amount
+
+    map = new Map(document.getElementById("map"), {
+      center: { lat: 47.6062, lng: -122.3321 },
+      zoom: 11,
     });
 
-    video = document.getElementById('videoPlayer');
-    detector = ml5.objectDetector('cocossd', {}, function() { console.log("working") });
+    // Create a drawing manager
+    drawingManager = new google.maps.drawing.DrawingManager({
+        drawingMode: google.maps.drawing.OverlayType.RECTANGLE,
+        drawingControl: true,
+        drawingControlOptions: {
+            position: google.maps.ControlPosition.TOP_CENTER,
+            drawingModes: [google.maps.drawing.OverlayType.RECTANGLE]
+        },
+        rectangleOptions: {
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.35,
+            editable: true,
+            draggable: true
+        }
+    });
 
-    //todo
-    // see if the model works during the day, it seems like it doesnt work as well in night
-    // (not detecting in easy cases to humans)
-    // tracking, so only moving cars can work
-    // display results to user
-    // image, object
-    // display if video is invalid for some reason
+    drawingManager.setMap(map);
 
-    // send to user
+    // Add an event listener for when the rectangle is complete
+    google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
+        let bounds = rectangle.getBounds();
+        let north = bounds.getNorthEast().lat();
+        let south = bounds.getSouthWest().lat();
+        let east = bounds.getNorthEast().lng();
+        let west = bounds.getSouthWest().lng();
 
-    video.addEventListener('loadeddata', function() {
-      let videoElement = id("videoPlayer");
-      let canvas = id("canvas");
-      canvas.width = id("videoPlayer").videoWidth;
-      canvas.height = id("videoPlayer").videoHeight;
-      videoElement.width = videoElement.videoWidth;
-      videoElement.height = videoElement.videoHeight;
-      resizeCanvasToDisplaySize(canvas);
-      runModel(detector, video);
+        console.log("North: " + north);
+        console.log("South: " + south);
+        console.log("East: " + east);
+        console.log("West: " + west);
+    });
+
+    google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
+
+      let bounds = rectangle.getBounds();
+      let numPoints = parseInt(pointAmountInput.value); // Get the number of points from the input value
+
+      let points = evenlySpreadPoints(bounds, numPoints);
+
+      // Create markers for the evenly spread points
+      let markers = points.map(function(point) {
+        return new google.maps.Marker({
+            position: point,
+            map: map
+        });
+      });
+
+      let rectangleWithPoints = {
+        "rectangle": rectangle,
+        "points": points,
+        "markers": markers
+      };
+
+      rectanglesWithPoints.push(rectangleWithPoints);
+
+      // Create a delete button for the rectangle
+      let deleteButton = document.createElement('div');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = 'Delete';
+
+      // Position the delete button at the top right of the rectangle
+      deleteButton.style.position = 'absolute';
+      deleteButton.style.top = '0';
+      deleteButton.style.right = '0';
+
+      // Add the delete button to the map
+      map.controls[google.maps.ControlPosition.TOP_RIGHT].push(deleteButton);
+
+      // Add an event listener to delete the rectangle when the delete button is clicked
+      deleteButton.addEventListener('click', function() {
+        rectangleWithPoints.rectangle.setMap(null); // Remove the rectangle from the map
+
+        // Remove the associated markers
+        rectangleWithPoints.markers.forEach(function(marker) {
+            marker.setMap(null);
+        });
+
+        rectanglesWithPoints = rectanglesWithPoints.filter(function(item) {
+            return item.rectangle !== rectangleWithPoints.rectangle;
+        });
+        deleteButton.remove(); // Remove the delete button
+      });
+
+      google.maps.event.addListener(rectangle, 'bounds_changed', function() {
+        let bounds = rectangle.getBounds();
+
+        // Update the rectangle bounds in the rectanglesWithPoints array
+        rectanglesWithPoints.forEach(function(rectangleWithPoints) {
+            if (rectangleWithPoints.rectangle === rectangle) {
+                rectangleWithPoints.points = evenlySpreadPoints(bounds, rectangleWithPoints.points.length);
+
+                // Update the markers on the map
+                rectangleWithPoints.markers.forEach(function(marker) {
+                    marker.setMap(null);
+                });
+                rectangleWithPoints.markers = rectangleWithPoints.points.map(function(point) {
+                    return new google.maps.Marker({
+                        position: point,
+                        map: map
+                    });
+                });
+
+                // Update any other data associated with the rectangle as needed
+            }
+        });
+      });
+
+      google.maps.event.addListener(rectangle, 'dragend', function() {
+          let bounds = rectangle.getBounds();
+
+          // Update the rectangle bounds in the rectanglesWithPoints array
+          rectanglesWithPoints.forEach(function(rectangleWithPoints) {
+              if (rectangleWithPoints.rectangle === rectangle) {
+                  rectangleWithPoints.points = evenlySpreadPoints(bounds, rectangleWithPoints.points.length);
+
+                  // Update the markers on the map
+                  rectangleWithPoints.markers.forEach(function(marker) {
+                      marker.setMap(null);
+                  });
+                  rectangleWithPoints.markers = rectangleWithPoints.points.map(function(point) {
+                      return new google.maps.Marker({
+                          position: point,
+                          map: map
+                      });
+                  });
+
+                  // Update any other data associated with the rectangle as needed
+              }
+          });
+      });
+
+
+
+    });
+
+    pointAmountInput.addEventListener('change', function() {
+      let numPoints = parseInt(pointAmountInput.value);
+      rectanglesWithPoints.forEach(function(rectangleWithPoints) {
+          let bounds = rectangleWithPoints.rectangle.getBounds();
+          let points = evenlySpreadPoints(bounds, numPoints);
+
+          rectangleWithPoints.points = points;
+
+          rectangleWithPoints.markers.forEach(function(marker) {
+            marker.setMap(null);
+          });
+
+          // Update the markers on the map
+          rectangleWithPoints.markers = points.map(function(point) {
+            return new google.maps.Marker({
+                position: point,
+                map: map
+            });
+        });
+      });
     });
   }
+
+  function evenlySpreadPoints(bounds, numPoints) {
+    let ne = bounds.getNorthEast();
+    let sw = bounds.getSouthWest();
+
+    let lngSpan = ne.lng() - sw.lng();
+    let latSpan = ne.lat() - sw.lat();
+
+    let aspectRatio = lngSpan / latSpan;
+    let gridCols = Math.ceil(Math.sqrt(numPoints * aspectRatio));
+    let gridRows = Math.ceil(numPoints / gridCols);
+
+    let lngIncrement = lngSpan / gridCols;
+    let latIncrement = latSpan / gridRows;
+
+    let points = [];
+    let colSizes = [];
+    let averageColSize = Math.floor(numPoints / gridCols);
+
+    for (let i = 0; i < gridCols; i++) {
+        colSizes.push(averageColSize);
+    }
+
+    let remainingPoints = numPoints - averageColSize * gridCols;
+    let symmetricalPoints = Math.floor(remainingPoints / 2);
+
+    let colIndex = Math.floor(gridCols / 2); // Center the column with the least number of points
+
+    while (symmetricalPoints > 0) {
+        colSizes[colIndex]++;
+        colSizes[gridCols - 1 - colIndex]++;
+        symmetricalPoints--;
+        colIndex--;
+    }
+
+    if (remainingPoints % 2 !== 0) {
+        colSizes[Math.floor(gridCols / 2)]++;
+    }
+
+    let colStartIndex = 0;
+
+    for (let i = 0; i < gridCols; i++) {
+        let colSize = colSizes[i];
+        let colLng = sw.lng() + lngIncrement * (i + 0.5);
+
+        let rowStartIndex = colStartIndex + Math.floor((gridRows - colSize) / 2);
+
+        for (let j = 0; j < colSize; j++) {
+            let rowIndex = (rowStartIndex + j) % gridRows;
+            let lat = sw.lat() + latIncrement * (rowIndex + 0.5);
+            let lng = colLng;
+            let point = new google.maps.LatLng(lat, lng);
+
+            // Check if the point is within the bounds
+            if (bounds.contains(point)) {
+                points.push(point);
+            }
+        }
+
+        colStartIndex += gridRows;
+    }
+
+    return points;
+  }
+
+
+
 
   function runModel(detector, video) {
     detector.detect(video, gotResults);
@@ -56,44 +270,8 @@
       return;
     }
 
-
-    let secondFrame = await new Promise((resolve, reject) => {
-      setTimeout(() => {
-        detector.detect(video, getSecondFrame).then((result) => resolve(result)).catch(reject);
-      }, 250);
-    });
-
-    for (let i = results.length - 1; i >= 0; i--) {
-      if (results[i].width > 80 || results[i].height > 80) {
-        results.splice(i, 1);
-      }
-    }
-
-    for (let i = secondFrame.length - 1; i >= 0; i--) {
-      if (secondFrame[i].width > 80 || secondFrame[i].height > 80) {
-        secondFrame.splice(i, 1);
-      }
-    }
-
-    let cars = filterResults(results, secondFrame);
-
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // for (let i = 0; i < cars.length; i++) {
-    //   let x = cars[i].normalized.x;
-    //   let y = cars[i].normalized.y;
-    //   let width = cars[i].normalized.width;
-    //   let height = cars[i].normalized.height;
-
-
-    //   resizeCanvasToDisplaySize(document.getElementById('canvas'));
-    //   const canvas = document.getElementById('canvas');
-    //   let canvasWidth = canvas.offsetWidth;
-    //   let canvasHeight = canvas.offsetHeight;
-
-    //   drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#0000FF");
-    // }
 
     for (let i = 0; i < results.length; i++) {
       let x = results[i].normalized.x;
@@ -110,98 +288,9 @@
       drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#FF0000");
     }
 
-    for (let i = 0; i < secondFrame.length; i++) {
-      let x = secondFrame[i].normalized.x;
-      let y = secondFrame[i].normalized.y;
-      let width = secondFrame[i].normalized.width;
-      let height = secondFrame[i].normalized.height;
-
-
-      resizeCanvasToDisplaySize(document.getElementById('canvas'));
-      const canvas = document.getElementById('canvas');
-      let canvasWidth = canvas.offsetWidth;
-      let canvasHeight = canvas.offsetHeight;
-
-      drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#0000FF");
-    }
-
-
     detector.detect(video, gotResults);
-
   }
 
-
-  function filterResults(results, secondFrame) {
-    if (results.length != secondFrame.length) return [];
-
-
-    let resultCars = [];
-    for (let i = 0; i < results.length; i++) {
-      let label = results[i]['label'];
-      if (label === "car") resultCars.push(results[i]);
-    }
-
-    let secondFrameCars = [];
-    for (let i = 0; i < secondFrame.length; i++) {
-      let label = secondFrame[i]['label'];
-      if (label === "car") secondFrameCars.push(secondFrame[i]);
-    }
-
-    if (resultCars.length != secondFrameCars.length) return [];
-
-    console.log("r", resultCars);
-    console.log("s", secondFrameCars);
-
-
-    let movingCars = [];
-
-    let threshold = 0.5;
-
-    for (let i = 0; i < resultCars.length; i++) {
-      let obj1 = resultCars[i];
-      let obj2 = secondFrameCars[i];
-
-      let differenceX = Math.abs(obj1.x - obj2.x);
-      let differenceY = Math.abs(obj1.y - obj2.y);
-
-      console.log(differenceX, differenceY);
-
-      if (differenceX > threshold || differenceY > threshold) {
-        movingCars.push(obj1);
-      }
-    }
-
-    return movingCars;
-  }
-
-  function getSecondFrame(error, results) {
-    return new Promise((resolve, reject) => {
-      let cars = [];
-      // get only cars
-      for (let i = 0; i < results.length; i++) {
-        let label = results[i]['label'];
-        if (label === "car") cars.push(results[i]);
-      }
-      resolve(cars);
-    });
-  }
-
-
-  function updateActualVideo() {
-    let canvas = id("canvas");
-    let actual = id("actual");
-    actual.width = canvas.offsetWidth;
-    actual.height = canvas.offsetHeight;
-
-    var context = actual.getContext("2d");
-    context.drawImage(video,0,0);
-    context.drawImage(canvas,0,0);
-  }
-
-
-  function clearInput() {
-    qs("input").value = "";
-  }
 
   function drawRectangle(x, y, width, height, hex) {
     resizeCanvasToDisplaySize(document.getElementById('canvas'));
@@ -229,96 +318,7 @@
     }
 
     return false;
- }
-  async function getData() {
-    let request = "https://web.seattle.gov/Travelers/api/Map/Data?zoomId=14&type=2"
-    let resultFetch = await fetch(request)
-      .then(statusCheck)
-      .then(res => res.json())
-      .catch(handleError);
-
-    let points = resultFetch['Features'];
-
-    let placeSet = new Set();
-
-    for (let i = 0; i < points.length; i++) {
-      let data = points[i];
-      let coord = data['PointCoordinate'];
-      let cameras = [];
-      for (let j = 0; j < data['Cameras'].length; j++) {
-        let currentCamera = data['Cameras'];
-        let cameraId = currentCamera[0]['Id'];
-        let cameraName = currentCamera[0]['Description'];
-        let result = {
-          'name': cameraName,
-          'coord': coord,
-          'id': cameraId,
-        }
-
-        if (currentCamera['0']['Type'] === "sdot") {
-          let stream = currentCamera[0]['ImageUrl'].replace(".jpg", ".stream")
-          let streamURL = "https://61e0c5d388c2e.streamlock.net:443/live/" + stream + "/playlist.m3u8";
-          result['stream'] = streamURL;
-          placeSet.add(cameraName);
-          placeToData.set(cameraName, result);
-        }
-      }
-
-    }
-
-    PLACES = Array.from(placeSet);
-    setOptions();
   }
-
-  function setOptions() {
-    let placeInput = id("places");
-    for (let i = 0; i < PLACES.length; i++) {
-      let option = gen("option");
-      option.value = PLACES[i];
-      placeInput.append(option);
-    }
-  }
-
-  function setupCamera(input) {
-    if (!placeToData.has(String(input))) return;
-    let data = placeToData.get(input);
-    displayCamera(data.stream, data.name);
-  }
-
-  async function displayCamera(streamURL, locationName) {
-    let doesNotStreamExist = await fetch(streamURL)
-      .then(statusCheck404)
-      .catch(
-        function() {
-          doesNotStreamExist = false;
-        }
-      );
-
-
-    if (doesNotStreamExist) {
-      console.log("stream doesnt exist");
-      // need to display something if invalid
-      return;
-    }
-
-    id("location").textContent = locationName;
-    video = document.getElementById('videoPlayer');
-    if (Hls.isSupported()) {
-      let hls = new Hls();
-      hls.loadSource(streamURL);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-          video.play();
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamURL;
-        video.addEventListener('loadedmetadata', function() {
-            video.play();
-        });
-    }
-
-  }
-
 
 
   /**
