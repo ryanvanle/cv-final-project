@@ -14,6 +14,8 @@
   let rectanglesWithPoints = [];
   let drawingManager;
 
+  let containerID = 0;
+
   function init() {
     initMap();
     id("data").addEventListener("click", function() {
@@ -30,7 +32,36 @@
 
       // createStaticStreetViewImage(rectanglesWithPoints[0].points[0])
     })
+
     detector = ml5.objectDetector('cocossd', {}, function() { console.log("working") });
+  }
+
+
+  function getRenderedSize(contains, cWidth, cHeight, width, height, pos){
+    var oRatio = width / height,
+        cRatio = cWidth / cHeight;
+    return function() {
+      if (contains ? (oRatio > cRatio) : (oRatio < cRatio)) {
+        this.width = cWidth;
+        this.height = cWidth / oRatio;
+      } else {
+        this.width = cHeight * oRatio;
+        this.height = cHeight;
+      }
+      this.left = (cWidth - this.width)*(pos/100);
+      this.right = this.width + this.left;
+      return this;
+    }.call({});
+  }
+
+  function getImgSizeInfo(img) {
+    var pos = window.getComputedStyle(img).getPropertyValue('object-position').split(' ');
+    return getRenderedSize(true,
+                           img.width,
+                           img.height,
+                           img.naturalWidth,
+                           img.naturalHeight,
+                           parseInt(pos[0]));
   }
 
   async function initMap() {
@@ -272,22 +303,64 @@
   function create360StaticStreetViewImage(point) {
     const apiKey = 'AIzaSyBrihFqby1UCOB9U0pMfSHauXWZlFtLfek';
     const container = document.getElementById('streetview-container');
+
+    let mainContainer = gen("section");
+    mainContainer.classList.add("main-container");
+
     let imageContainer = gen("section");
-    imageContainer.classList.add("image-container")
+    imageContainer.classList.add("image-container");
     let coordsTitle = gen("h2");
     coordsTitle.textContent = `lat: ${point.lat()}, long: ${point.lng()}`
     imageContainer.appendChild(coordsTitle);
+    let images = [];
+
     for (let angle = 0; angle < 360; angle += 90) {
-      const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${point.lat()},${point.lng()}&heading=${angle}&key=${apiKey}`;
+      let pov = 120;
+      const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${point.lat()},${point.lng()}&heading=${angle}&key=${apiKey}&pov=${pov}`;
       // Create an image element and set the source to the Street View image URL
       const image = document.createElement('img');
       image.src = imageUrl;
 
       // Append the image element to the container
+      images.push(image);
       imageContainer.appendChild(image);
     }
 
-    container.appendChild(imageContainer);
+    mainContainer.appendChild(imageContainer);
+    mainContainer.id = containerID;
+    containerID++;
+    container.appendChild(mainContainer);
+
+    generateCanvasPano(images, mainContainer);
+  }
+  function generateCanvasPano(images, mainContainer) {
+    let mainContainerImages = mainContainer.firstChild.childNodes;
+    let canvasContainer = gen("section");
+    canvasContainer.classList.add("canvas-container");
+    mainContainer.appendChild(canvasContainer);
+
+
+    for (let i = 1; i < mainContainerImages.length; i++) {
+      let currentImage = mainContainerImages[i];
+      let imageStyle = window.getComputedStyle(currentImage);
+      let position = getImgSizeInfo(currentImage);
+
+      let canvas = gen("canvas");
+      canvas.width = 600;
+      canvas.height = 400;
+      canvasContainer.appendChild(canvas);
+
+      console.log(canvas.width);
+      console.log(canvas.height);
+
+      let context = canvas.getContext("2d");
+      context.strokeStyle = "#E37933";
+      context.rect(0, 0, canvas.width, canvas.height); // get reference of size
+      context.stroke();
+    }
+
+
+
 
   }
 

@@ -37,13 +37,28 @@
   flex-direction: column;
 }
 
-#streetview-container img {
-  width: 25%;
-  height: auto;
+#streetview-container img, #streetview-container canvas {
+  width: 20%;
   object-fit: contain;
+  background-color: -90%;
 }
 
-.image-container {
-  margin-top: 1rem;
+.main-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.image-container, .canvas-container {
+  display: inline;
   width: 100%;
+}
+
+.canvas-container {
+  margin-top: -13.5%;
+
+}
+
+.canvas-container canvas {
+  width: 50%;
+  object-fit: contain;
 }
