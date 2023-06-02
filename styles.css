@@ -19,13 +19,31 @@
   /* display: flex; */
 }
 
-#pano {
+#pano, #input-canvas-container {
   height: 85vh; /* The height is 400 pixels */
   width: 100%;
+  background-color: blue;
 }
+
 
 #input-canvas {
   width: 100%;
   background-color: rgba(0,0,255,0.1);  /* blue */
 }
 
+#streetview-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+#streetview-container img {
+  width: 25%;
+  height: auto;
+  object-fit: contain;
+}
+
+.image-container {
+  margin-top: 1rem;
+  width: 100%;
+}

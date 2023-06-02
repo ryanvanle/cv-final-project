@@ -21,9 +21,14 @@
     });
 
     id("submit").addEventListener("click", function() {
-      createStreetViewPanorama(rectanglesWithPoints[0].points[0])
-      // createStaticStreetViewImage(rectanglesWithPoints[0].points[0])
+      for (let i = 0; i < rectanglesWithPoints.length; i++) {
+        for (let j = 0; j < rectanglesWithPoints[i].points.length; j++) {
+          create360StaticStreetViewImage(rectanglesWithPoints[i].points[j]);
+          identifyCars();
+        }
+      }
 
+      // createStaticStreetViewImage(rectanglesWithPoints[0].points[0])
     })
     detector = ml5.objectDetector('cocossd', {}, function() { console.log("working") });
   }
@@ -263,58 +268,43 @@
     return points;
   }
 
-  function createStreetViewPanorama(point) {
-    const panorama = new google.maps.StreetViewPanorama(document.getElementById('pano'), {
-      position: point,
-      pov: {
-        heading: 0,
-        pitch: 0
 
-      },
-      disableDefaultUI: true,
-      visible: true
-    });
-
-
-    // take screenshots
-    id("input-canvas").height = id("pano").offsetHeight;
-    id("input-canvas").width = id("pano").offsetWidth;
-
-    let panoCanvas = qs("#pano canvas");
-    console.log(panoCanvas);
-
-    let heading = 0;
-    let timerId = setInterval(() => {
-      heading += 90;
-      panorama.setPov({ heading: heading, pitch: 0 });
-
-      if (heading === 360) clearInterval(timerId);
-    }, 250); // Rotate every 2 seconds (adjust the interval as desired)
-  }
-
-  function createStaticStreetViewImage(point) {
+  function create360StaticStreetViewImage(point) {
     const apiKey = 'AIzaSyBrihFqby1UCOB9U0pMfSHauXWZlFtLfek';
     const container = document.getElementById('streetview-container');
-    const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${point.lat()},${point.lng()}&key=${apiKey}`;
+    let imageContainer = gen("section");
+    imageContainer.classList.add("image-container")
+    let coordsTitle = gen("h2");
+    coordsTitle.textContent = `lat: ${point.lat()}, long: ${point.lng()}`
+    imageContainer.appendChild(coordsTitle);
+    for (let angle = 0; angle < 360; angle += 90) {
+      const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${point.lat()},${point.lng()}&heading=${angle}&key=${apiKey}`;
+      // Create an image element and set the source to the Street View image URL
+      const image = document.createElement('img');
+      image.src = imageUrl;
 
-    // Create an image element and set the source to the Street View image URL
-    const image = document.createElement('img');
-    image.src = imageUrl;
+      // Append the image element to the container
+      imageContainer.appendChild(image);
+    }
 
-    // Append the image element to the container
-    container.appendChild(image);
+    container.appendChild(imageContainer);
+
   }
 
-
-  function runModel(detector, video) {
-    detector.detect(video, gotResults);
+  function identifyCars() {
+    let images = qsa("#streetview-container img");
+    for (let i = 0; i < images.length; i++) {
+      // detector.detect(images[i], gotResults);
+    }
   }
+
 
   async function gotResults(error, results) {
     if (error) {
       console.error(error);
       return;
     }
+
 
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
