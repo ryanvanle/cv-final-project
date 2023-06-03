@@ -41,15 +41,15 @@
 #streetview-container img {
   object-fit: contain;
   aspect-ratio: 6 / 4;
-  width: 600px;
-  height: 400px;
+  width: 300px;
+  height: 200px;
 }
 
 #streetview-container canvas {
   aspect-ratio: 6 / 4;
 
-  width: 600px;
-  height: 400px;
+  width: 300px;
+  height: 200px;
 
 }
 
