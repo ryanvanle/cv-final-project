@@ -14,22 +14,48 @@
   let rectanglesWithPoints = [];
   let drawingManager;
   let containerID = 0;
+  let pointToResults = new Map();
 
   function init() {
     detector = ml5.objectDetector('coco', {}, function() {
       console.log("working")
-      identifyCars(qs(".main-container"));
-
+      // identifyCars(qs(".main-container"));
     });
 
     initMap();
     id("data").addEventListener("click", function() {
-      console.log(rectanglesWithPoints);
+      let img = gen("img");
+      img.src = "http://localhost:8000/streetview/?latitude=34.0522&longitude=-118.2437&angle=0&image_width=640&image_height=480&pov=90";
+
+      img.crossOrigin = "anonymous";
+      img.onload = function() {
+        detector.detect(img, function(error, results) {
+          if (error) {
+            console.error(error);
+            return;
+          }
+
+          console.log(results);
+        })
+      }
+
+      id("streetview-container").appendChild(img);
+
     });
 
 
 
     id("submit").addEventListener("click", function() {
+      // let img = qs("#streetview-container img");
+      // console.log(img);
+      // detector.detect(img, function(error, results) {
+      //   if (error) {
+      //     console.error(error);
+      //     return;
+      //   }
+
+      //   console.log(results);
+      // });
       for (let i = 0; i < rectanglesWithPoints.length; i++) {
         for (let j = 0; j < rectanglesWithPoints[i].points.length; j++) {
           create360StaticStreetViewImage(rectanglesWithPoints[i].points[j]);
@@ -72,18 +98,18 @@
     drawingManager.setMap(map);
 
     // Add an event listener for when the rectangle is complete
-    google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
-        let bounds = rectangle.getBounds();
-        let north = bounds.getNorthEast().lat();
-        let south = bounds.getSouthWest().lat();
-        let east = bounds.getNorthEast().lng();
-        let west = bounds.getSouthWest().lng();
+    // google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
+    //     let bounds = rectangle.getBounds();
+    //     let north = bounds.getNorthEast().lat();
+    //     let south = bounds.getSouthWest().lat();
+    //     let east = bounds.getNorthEast().lng();
+    //     let west = bounds.getSouthWest().lng();
 
-        console.log("North: " + north);
-        console.log("South: " + south);
-        console.log("East: " + east);
-        console.log("West: " + west);
-    });
+    //     console.log("North: " + north);
+    //     console.log("South: " + south);
+    //     console.log("East: " + east);
+    //     console.log("West: " + west);
+    // });
 
     google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
 
@@ -273,30 +299,30 @@
   }
 
 
-  function create360StaticStreetViewImage(point) {
+  async function create360StaticStreetViewImage(point) {
     const apiUrl = "http://localhost:8000/streetview/";
     const container = document.getElementById('streetview-container');
 
     let mainContainer = gen("section");
     mainContainer.classList.add("main-container");
 
+    let wrapper = gen("div");
+    wrapper.classList.add("container-wrapper");
+
+    let flex = gen("div");
+    flex.classList.add("container-flex");
+
     let imageContainer = gen("section");
     imageContainer.classList.add("image-container");
+
+    let canvasContainer = gen("section");
+    canvasContainer.classList.add("canvas-container");
+
     let coordsTitle = gen("h2");
     coordsTitle.textContent = `lat: ${point.lat()}, long: ${point.lng()}`
-    imageContainer.appendChild(coordsTitle);
+    mainContainer.appendChild(coordsTitle);
     let images = [];
     let imageCount = 0;
-
-    //callback
-    function handleImageLoad() {
-      imageCount++;
-      if (imageCount === 4) {
-        generateCanvasPano(images, mainContainer);
-        identifyCars(mainContainer);
-      }
-    }
-
 
     for (let angle = 0; angle < 360; angle += 90) {
       let pov = 90;
@@ -308,23 +334,74 @@
         image_height: 400,
         pov: pov,
       });
+
       const imageUrl = `${apiUrl}?${params}`;
+      let request = await fetch(imageUrl)
+      .then(statusCheck)
+      .then(res => {return res})
+      .catch(handleError);
+
+
+      // console.log(request);
+
 
       // Create an image element and set the source to the Street View image URL
-      const image = document.createElement("img");
-      image.src = imageUrl;
+      let image = document.createElement("img");
+      // image.src = "img/streetview (1).jpeg";
+      image.src = request.url;
       image.width = 600;
       image.height = 400;
-      image.onload = handleImageLoad;
+      image.crossOrigin = "anonymous";
+      image.onload = function() {
+        let canvas = generateCanvasFromImage(image);
+
+        detector.detect(image, function(error, results) {
+          if (error) {
+            console.error(error);
+            return;
+          }
+
+          canvasContainer.appendChild(canvas);
+
+
+          let cars = [];
+          // get only cars
+          for (let i = 0; i < results.length; i++) {
+            let label = results[i]['label'];
+            if (label === "car") cars.push(results[i]);
+          }
+
+
+          for (let i = 0; i < cars.length; i++) {
+            let x = cars[i].normalized.x;
+            let y = cars[i].normalized.y;
+            let width = cars[i].normalized.width;
+            let height = cars[i].normalized.height;
+            drawRectangle(canvas, x, y, width, height, "#F85149");
+
+          }
+
+          console.log(results);
+        });
+      }
 
       // Append the image element to the container
       images.push(image);
       imageContainer.appendChild(image);
     }
 
-
-    mainContainer.appendChild(imageContainer);
+    flex.appendChild(imageContainer);
+    flex.appendChild(canvasContainer);
+    wrapper.appendChild(flex);
+    mainContainer.appendChild(wrapper);
     container.appendChild(mainContainer);
+  }
+
+  function generateCanvasFromImage(image) {
+    let canvas = gen("canvas");
+    canvas.width = 600;
+    canvas.height = 400;
+    return canvas;
   }
 
   function generateCanvasPano(images, mainContainer) {
@@ -360,8 +437,7 @@
 
       for (let j = 0; j < images.length; j++) {
         const image = images[j];
-        image.crossOrigin = "anonymous"; // Add crossorigin attribute
-
+        image.crossOrigin = "anonymous";
         const canvas = canvases[j];
 
         console.log(image);
@@ -405,12 +481,10 @@
   }
 
 
-  function drawRectangle(x, y, width, height, hex) {
-    resizeCanvasToDisplaySize(document.getElementById('canvas'));
-    const canvas = document.getElementById('canvas');
+  function drawRectangle(canvas, x, y, width, height, hex) {
 
-    let canvasWidth = canvas.offsetWidth;
-    let canvasHeight = canvas.offsetHeight;
+    let canvasWidth = canvas.width;
+    let canvasHeight = canvas.height;
     const context = canvas.getContext('2d');
     context.beginPath();
     context.strokeStyle = hex;
