@@ -8,6 +8,7 @@
   window.addEventListener("load", init);
 
   let detector;
+  let upscaler;
   let selectedLocation = null;
   let map, panorama;
 
@@ -16,11 +17,18 @@
   let containerID = 0;
   let pointToResults = new Map();
 
+  const imageWidth = 600;
+  const imageHeight = 400;
+
   function init() {
     detector = ml5.objectDetector('coco', {}, function() {
       console.log("working")
       // identifyCars(qs(".main-container"));
     });
+
+    upscaler = new Upscaler({
+      model: DefaultUpscalerJSModel,
+    })
 
     initMap();
     id("data").addEventListener("click", function() {
@@ -330,8 +338,8 @@
         latitude: point.lat(),
         longitude: point.lng(),
         angle: angle,
-        image_width: 600,
-        image_height: 400,
+        image_width: imageWidth,
+        image_height: imageHeight,
         pov: pov,
       });
 
@@ -349,8 +357,8 @@
       let image = document.createElement("img");
       // image.src = "img/streetview (1).jpeg";
       image.src = request.url;
-      image.width = 600;
-      image.height = 400;
+      image.width = imageWidth;
+      image.height = imageHeight;
       image.crossOrigin = "anonymous";
       image.onload = function() {
         let canvas = generateCanvasFromImage(image);
@@ -373,12 +381,45 @@
 
 
           for (let i = 0; i < cars.length; i++) {
+            if (cars[i].confidence < 0.75) continue;
             let x = cars[i].normalized.x;
             let y = cars[i].normalized.y;
             let width = cars[i].normalized.width;
             let height = cars[i].normalized.height;
-            drawRectangle(canvas, x, y, width, height, "#F85149");
 
+            let xModify = -0.05;
+            let yModify = -0.05;
+            let widthModify = 0.1;
+            let heightModify = 0.1;
+
+            // adjusted normalized
+            let xNew = x + xModify;
+            let yNew = y + yModify;
+            let widthNew = width + widthModify;
+            let heightNew = height + heightModify;
+
+            // Clamp the adjusted normalized values to stay within the range [0, 1]
+            xNew = Math.max(0, Math.min(xNew, 1));
+            yNew = Math.max(0, Math.min(yNew, 1));
+            widthNew = Math.max(0, Math.min(widthNew, 1 - xNew));
+            heightNew = Math.max(0, Math.min(heightNew, 1 - yNew));
+
+
+            // scaled up with canvas;
+            let xScaled = xNew * imageWidth;
+            let yScaled = yNew * imageHeight;
+            let widthScaled = widthNew * imageWidth;
+            let heightScaled = heightNew * imageHeight;
+
+            // Clamp the scaled values to stay within the bounds of the image
+            xScaled = Math.max(0, Math.min(xScaled, imageWidth));
+            yScaled = Math.max(0, Math.min(yScaled, imageHeight));
+            widthScaled = Math.max(0, Math.min(widthScaled, imageWidth - xScaled));
+            heightScaled = Math.max(0, Math.min(heightScaled, imageHeight - yScaled));
+
+            drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
+            let extractedImage = extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled);
+            id("test").appendChild(extractedImage);
           }
 
           console.log(results);
@@ -399,85 +440,25 @@
 
   function generateCanvasFromImage(image) {
     let canvas = gen("canvas");
-    canvas.width = 600;
-    canvas.height = 400;
+    canvas.width = imageHeight;
+    canvas.height = imageWidth;
     return canvas;
   }
 
-  function generateCanvasPano(images, mainContainer) {
-    let mainContainerImages = mainContainer.firstChild.childNodes;
-    let canvasContainer = gen("section");
-    canvasContainer.classList.add("canvas-container");
-    mainContainer.appendChild(canvasContainer);
+  function extractImageArea(image, sourceX, sourceY, width, height, imageWidth, imageHeight) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(image, sourceX, sourceY, width, height, 0, 0, canvas.width, canvas.height);
+    const extractedImageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-
-    for (let i = 1; i < mainContainerImages.length; i++) {
-      let canvas = gen("canvas");
-      canvas.width = 600;
-      canvas.height = 400;
-      canvasContainer.appendChild(canvas);
-
-      // check if it fits the box
-      // let context = canvas.getContext("2d");
-      // context.strokeStyle = "#E37933";
-      // context.rect(0, 0, canvas.width, canvas.height);
-      // context.stroke();
-    }
-  }
-
-  function identifyCars(mainContainer) {
-    const imageContainers = mainContainer.getElementsByClassName("image-container");
-    const canvasContainers = mainContainer.getElementsByClassName("canvas-container");
-    for (let i = 0; i < imageContainers.length; i++) {
-      const imageContainer = imageContainers[i];
-      const canvasContainer = canvasContainers[i];
-      const images = imageContainer.getElementsByTagName("img");
-
-      const canvases = canvasContainer.getElementsByTagName("canvas");
-
-      for (let j = 0; j < images.length; j++) {
-        const image = images[j];
-        image.crossOrigin = "anonymous";
-        const canvas = canvases[j];
-
-        console.log(image);
-        detector.detect(image, function (error, results) {
-          if (error) {
-            console.error(error);
-            return;
-          }
-
-          gotResults(results, canvas);
-        });
-      }
-    }
-  }
-
-  async function gotResults(results, canvas) {
-
-    console.log(results);
+    let extractedImage = new Image();
+    extractedImage.src = canvas.toDataURL();
 
 
 
-    // const context = canvas.getContext('2d');
-    // context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // for (let i = 0; i < results.length; i++) {
-    //   let x = results[i].normalized.x;
-    //   let y = results[i].normalized.y;
-    //   let width = results[i].normalized.width;
-    //   let height = results[i].normalized.height;
-
-
-    //   resizeCanvasToDisplaySize(document.getElementById('canvas'));
-    //   const canvas = document.getElementById('canvas');
-    //   let canvasWidth = canvas.offsetWidth;
-    //   let canvasHeight = canvas.offsetHeight;
-
-    //   drawRectangle(x-0.025, y-0.025, width+0.05, height+0.05, "#FF0000");
-    // }
-
-    // detector.detect(video, gotResults);
+    return extractedImage;
   }
 
 
