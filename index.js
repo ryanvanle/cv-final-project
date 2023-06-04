@@ -33,7 +33,7 @@
     initMap();
     id("data").addEventListener("click", function() {
       let img = gen("img");
-      img.src = "http://localhost:8000/streetview/?latitude=34.0522&longitude=-118.2437&angle=0&image_width=640&image_height=480&pov=90";
+      img.src = "img/tesla.jpeg";
 
       img.crossOrigin = "anonymous";
       img.onload = function() {

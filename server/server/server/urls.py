@@ -17,9 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from .views import get_streetview_image
+from .views import classify_image
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path('predict/', classify_image, name='predict'),
     path('streetview/', get_streetview_image, name='get_streetview_image'),
 ]
