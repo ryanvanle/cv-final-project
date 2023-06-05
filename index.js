@@ -36,41 +36,37 @@
       img.src = "img/tesla.jpeg";
 
       img.crossOrigin = "anonymous";
-      img.onload = function() {
-        detector.detect(img, function(error, results) {
-          if (error) {
-            console.error(error);
-            return;
-          }
+      img.onload = async function() {
+        let imagePath = img.src;
+        let apiURL = "http://localhost:8001/predict/";
 
-          console.log(results);
+        let formData = new FormData();
+        formData.append("image_url", imagePath);
+
+        let data = await fetch(apiURL, {
+          method: "POST",
+          body: formData
         })
-      }
+          .then(res => res.json())
+          .catch(handleError);
+
+        let resultImg = gen("img");
+        resultImg.src = "data:image/jpeg;base64," + data.image;
+        id("streetview-container").appendChild(resultImg);
+
+        console.log(data);
+      };
 
       id("streetview-container").appendChild(img);
-
     });
 
-
-
     id("submit").addEventListener("click", function() {
-      // let img = qs("#streetview-container img");
-      // console.log(img);
-      // detector.detect(img, function(error, results) {
-      //   if (error) {
-      //     console.error(error);
-      //     return;
-      //   }
-
-      //   console.log(results);
-      // });
       for (let i = 0; i < rectanglesWithPoints.length; i++) {
         for (let j = 0; j < rectanglesWithPoints[i].points.length; j++) {
           create360StaticStreetViewImage(rectanglesWithPoints[i].points[j]);
         }
       }
     });
-
   }
 
 
@@ -308,7 +304,7 @@
 
 
   async function create360StaticStreetViewImage(point) {
-    const apiUrl = "http://localhost:8000/streetview/";
+    const apiUrl = "http://localhost:8001/streetview/";
     const container = document.getElementById('streetview-container');
 
     let mainContainer = gen("section");
@@ -363,7 +359,7 @@
       image.onload = function() {
         let canvas = generateCanvasFromImage(image);
 
-        detector.detect(image, function(error, results) {
+        detector.detect(image, async function(error, results) {
           if (error) {
             console.error(error);
             return;
@@ -418,8 +414,10 @@
             heightScaled = Math.max(0, Math.min(heightScaled, imageHeight - yScaled));
 
             drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
-            let extractedImage = extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled);
-            id("test").appendChild(extractedImage);
+            let extractedImage = extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled, function(extractedImage) {
+              extractedImage = predict(extractedImage);
+            });
+            console.log(extractedImage);
           }
 
           console.log(results);
@@ -438,6 +436,41 @@
     container.appendChild(mainContainer);
   }
 
+  async function predict(img) {
+    let imagePath = img.src;
+    img.crossOrigin = "anonymous"
+    let apiURL = "http://localhost:8001/predict/";
+
+    let formData = new FormData();
+    console.log(imagePath);
+    formData.append("image_data", imagePath);
+
+    let data = await fetch(apiURL, {
+      method: "POST",
+      body: formData
+    })
+      .then(res => res.json())
+      .catch(handleError);
+
+    let container = gen("section");
+    container.classList.add("prediction");
+
+    let labelElement = gen("h3");
+    let label = data.label;
+    labelElement.textContent = label;
+
+    console.log(data);
+    let resultImg = gen("img");
+    resultImg.src = "data:image/jpeg;base64," + data.image;
+
+
+    container.appendChild(labelElement);
+    container.appendChild(resultImg);
+
+
+    id("test").appendChild(container);
+  }
+
   function generateCanvasFromImage(image) {
     let canvas = gen("canvas");
     canvas.width = imageHeight;
@@ -445,7 +478,7 @@
     return canvas;
   }
 
-  function extractImageArea(image, sourceX, sourceY, width, height, imageWidth, imageHeight) {
+  function extractImageArea(image, sourceX, sourceY, width, height, callback) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = width;
@@ -455,10 +488,14 @@
 
     let extractedImage = new Image();
     extractedImage.src = canvas.toDataURL();
-
-
-
-    return extractedImage;
+    extractedImage.onload = function() {
+      // Check if the callback is a function before calling it
+      if (typeof callback === 'function') {
+        callback(extractedImage);
+      } else {
+        console.error('Invalid callback function.');
+      }
+    };
   }
 
 
