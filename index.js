@@ -556,7 +556,7 @@
   function generateDataCharts() {
     let rectangleAmount = rectanglesWithPoints.length;
 
-    let loading = qs(".loading").style.display = "none";
+    qs(".loading").style.display = "none";
 
     let max = 0;
     for (let i = 0; i < rectangleAmount; i++) {
