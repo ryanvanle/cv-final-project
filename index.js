@@ -24,8 +24,6 @@
 
   function init() {
     detector = ml5.objectDetector('coco', {}, function() {
-      console.log("working")
-      // identifyCars(qs(".main-container"));
     });
 
     initMap();
@@ -54,8 +52,8 @@
       dataVisSection.append(loading);
       id("results").append(dataVisSection);
       predictionData = {};
-      id("delete").disabled = false;
-      id("submit").disabled = false;
+      id("delete").disabled = true;
+      id("submit").disabled = true;
 
       for (let i = 0; i < rectanglesWithPoints.length; i++) {
         let rectangleTitle1 = gen("h3");
@@ -78,8 +76,8 @@
       }
 
       setTimeout(generateDataCharts, 18 * 1000) // i couldnt figure out how to make this run after the for loops :(
-      id("delete").disabled = true;
-      id("submit").disabled = true;
+      id("delete").disabled = false;
+      id("submit").disabled = false;
 
       window.scroll({
         top: 950,
@@ -94,14 +92,13 @@
   async function initMap() {
     const { Map } = await google.maps.importLibrary("maps");
     const {DrawingManager} = await google.maps.importLibrary("drawing")
-    const pointAmountInput = document.getElementById('point-amount'); // Get the input element for point amount
+    const pointAmountInput = document.getElementById('point-amount');
 
     map = new Map(document.getElementById("map"), {
       center: { lat: 47.6062, lng: -122.3321 },
       zoom: 11,
     });
 
-    // Create a drawing manager
     drawingManager = new google.maps.drawing.DrawingManager({
         drawingMode: google.maps.drawing.OverlayType.RECTANGLE,
         drawingControl: true,
@@ -125,11 +122,10 @@
     google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
 
       let bounds = rectangle.getBounds();
-      let numPoints = parseInt(pointAmountInput.value); // Get the number of points from the input value
+      let numPoints = parseInt(pointAmountInput.value);
 
       let points = evenlySpreadPoints(bounds, numPoints);
 
-      // Create markers for the evenly spread points
       let markers = points.map(function(point) {
         return new google.maps.Marker({
             position: point,
@@ -145,12 +141,10 @@
 
       rectanglesWithPoints.push(rectangleWithPoints);
 
-      // Create a delete button for the rectangle
       let deleteButton = document.createElement('div');
       deleteButton.className = 'delete-button';
       deleteButton.innerHTML = 'Delete';
 
-      // Position the delete button at the top right of the rectangle
       deleteButton.style.position = 'absolute';
       deleteButton.style.top = '0';
       deleteButton.style.right = '0';
