@@ -30,6 +30,13 @@
 
     initMap();
 
+
+    id("close").addEventListener("click", function() {
+      id("welcome").style.display = "none";
+      id("delete").disabled = false;
+      id("submit").disabled = false;
+    });
+
     id("delete").addEventListener("click", function() {
       deleteAllRectangles();
     });
@@ -73,6 +80,12 @@
       setTimeout(generateDataCharts, 18 * 1000) // i couldnt figure out how to make this run after the for loops :(
       id("delete").disabled = true;
       id("submit").disabled = true;
+
+      window.scroll({
+        top: 950,
+        left: 0,
+        behavior: 'smooth'
+      });
 
     });
   }

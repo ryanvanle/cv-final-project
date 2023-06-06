@@ -25,6 +25,23 @@
     <script src="index.js" type="module"></script>
 </head>
 <body>
+  <section id="welcome">
+    <h1>Welcome to "insert title name"</h1>
+    <h2>Know the cars in any area you want!</h2>
+    <h2>By Ryan Le and Ashay Manocha</h2>
+
+    <section id="instructions">
+      <h3>Click on any area on the map and click again to make a new area</h2>
+      <h3>Point markers will appear of observed places</h2>
+      <section>
+        <img src="img/drag.png">
+        <img src="img/points.png">
+      </section>
+      <h3>Press Submit to find out the cars in the area</h2>
+    </section>
+    <button id="close">Close Instructions</button>
+  </section>
+
   <section id="main-screen">
     <section id="background">
       <section id="map" class="hide"></section>
@@ -34,9 +51,8 @@
     <section id="main-input">
       <input type="number" id="point-amount" name="point-amount"
       min="1" max="20" value="5">
-      <button id="delete">Clear Areas</button>
-      <button id="submit">SUBMIT</button>
-
+      <button id="delete" disabled>Clear Areas</button>
+      <button id="submit" disabled>SUBMIT</button>
     </section>
   </section>
  <section id="streetview-container">

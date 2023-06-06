@@ -197,9 +197,6 @@ body {
   font-size: 1.25rem;
 }
 
-#background {
-  background-image: url(img/loading.gif);
-}
 
 #submit {
   background-color: #9999;
@@ -223,4 +220,44 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   background-image: url(img/loading.gif);
+}
+
+#welcome {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  left: 50%;
+  top: 50%;
+  width: 60%;
+  transform: translate(-50%,-50%);
+  z-index: 1;
+  border: black solid;
+  background-color: white;
+  padding: 5rem;
+  box-shadow: 0 0 0 100vmax rgba(0,0,0,.5);
+}
+
+#welcome h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+#welcome h2 {
+  font-size: 1.4rem;
+  margin-top: 0rem;
+  margin-bottom: 0.8rem;
+}
+
+#welcome h3 {
+  font-size: 1.2rem;
+}
+
+#welcome button {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
