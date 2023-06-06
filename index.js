@@ -17,8 +17,8 @@
   let containerID = 0;
   let pointToResults = new Map();
 
-  const imageWidth = 600;
-  const imageHeight = 400;
+  const imageWidth = 300;
+  const imageHeight = 200;
 
   function init() {
     detector = ml5.objectDetector('coco', {}, function() {
@@ -26,39 +26,35 @@
       // identifyCars(qs(".main-container"));
     });
 
-    upscaler = new Upscaler({
-      model: DefaultUpscalerJSModel,
-    })
-
     initMap();
-    id("data").addEventListener("click", function() {
-      let img = gen("img");
-      img.src = "img/tesla.jpeg";
+    // id("data").addEventListener("click", function() {
+    //   let img = gen("img");
+    //   img.src = "img/tesla.jpeg";
 
-      img.crossOrigin = "anonymous";
-      img.onload = async function() {
-        let imagePath = img.src;
-        let apiURL = "http://localhost:8001/predict/";
+    //   img.crossOrigin = "anonymous";
+    //   img.onload = async function() {
+    //     let imagePath = img.src;
+    //     let apiURL = "http://localhost:8001/predict/";
 
-        let formData = new FormData();
-        formData.append("image_url", imagePath);
+    //     let formData = new FormData();
+    //     formData.append("image_url", imagePath);
 
-        let data = await fetch(apiURL, {
-          method: "POST",
-          body: formData
-        })
-          .then(res => res.json())
-          .catch(handleError);
+    //     let data = await fetch(apiURL, {
+    //       method: "POST",
+    //       body: formData
+    //     })
+    //       .then(res => res.json())
+    //       .catch(handleError);
 
-        let resultImg = gen("img");
-        resultImg.src = "data:image/jpeg;base64," + data.image;
-        id("streetview-container").appendChild(resultImg);
+    //     let resultImg = gen("img");
+    //     resultImg.src = "data:image/jpeg;base64," + data.image;
+    //     id("streetview-container").appendChild(resultImg);
 
-        console.log(data);
-      };
+    //     console.log(data);
+    //   };
 
-      id("streetview-container").appendChild(img);
-    });
+    //   id("streetview-container").appendChild(img);
+    // });
 
     id("submit").addEventListener("click", function() {
       for (let i = 0; i < rectanglesWithPoints.length; i++) {
@@ -346,8 +342,6 @@
       .catch(handleError);
 
 
-      // console.log(request);
-
 
       // Create an image element and set the source to the Street View image URL
       let image = document.createElement("img");
@@ -356,28 +350,29 @@
       image.width = imageWidth;
       image.height = imageHeight;
       image.crossOrigin = "anonymous";
-      image.onload = function() {
-        let canvas = generateCanvasFromImage(image);
+      imageContainer.appendChild(image);
+      let canvas = gen("canvas");
+      canvas.width = imageWidth;
+      canvas.height = imageHeight;
 
+      image.onload = async function() {
         detector.detect(image, async function(error, results) {
           if (error) {
             console.error(error);
             return;
           }
 
-          canvasContainer.appendChild(canvas);
-
 
           let cars = [];
           // get only cars
           for (let i = 0; i < results.length; i++) {
             let label = results[i]['label'];
-            if (label === "car") cars.push(results[i]);
+            let confidence = results[i]['confidence'];
+            if (label === "car" && confidence > 0.6) cars.push(results[i]);
           }
 
-
           for (let i = 0; i < cars.length; i++) {
-            if (cars[i].confidence < 0.75) continue;
+
             let x = cars[i].normalized.x;
             let y = cars[i].normalized.y;
             let width = cars[i].normalized.width;
@@ -412,21 +407,19 @@
             yScaled = Math.max(0, Math.min(yScaled, imageHeight));
             widthScaled = Math.max(0, Math.min(widthScaled, imageWidth - xScaled));
             heightScaled = Math.max(0, Math.min(heightScaled, imageHeight - yScaled));
+            console.log("gu")
 
-            drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
-            let extractedImage = extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled, function(extractedImage) {
-              extractedImage = predict(extractedImage);
-            });
-            console.log(extractedImage);
+            await drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
+            extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled)
           }
 
-          console.log(results);
+          canvasContainer.appendChild(canvas);
+
         });
       }
 
       // Append the image element to the container
       images.push(image);
-      imageContainer.appendChild(image);
     }
 
     flex.appendChild(imageContainer);
@@ -436,13 +429,41 @@
     container.appendChild(mainContainer);
   }
 
+  function drawRectangle(canvas, x, y, width, height, hex) {
+    return new Promise((resolve) => {
+      let canvasWidth = canvas.width;
+      let canvasHeight = canvas.height;
+      const context = canvas.getContext('2d');
+      context.beginPath();
+      context.strokeStyle = hex;
+      context.rect(x * canvasWidth, y * canvasHeight, width * canvasWidth, height * canvasHeight);
+      context.stroke();
+
+      resolve();
+    });
+  }
+
+  function extractImageArea(image, sourceX, sourceY, width, height) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(image, sourceX, sourceY, width, height, 0, 0, canvas.width, canvas.height);
+    const extractedImageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+    let extractedImage = new Image();
+    extractedImage.src = canvas.toDataURL();
+    predict(extractedImage)
+  }
+
+
+
   async function predict(img) {
     let imagePath = img.src;
     img.crossOrigin = "anonymous"
     let apiURL = "http://localhost:8001/predict/";
 
     let formData = new FormData();
-    console.log(imagePath);
     formData.append("image_data", imagePath);
 
     let data = await fetch(apiURL, {
@@ -458,57 +479,24 @@
     let labelElement = gen("h3");
     let label = data.label;
     labelElement.textContent = label;
-
-    console.log(data);
     let resultImg = gen("img");
     resultImg.src = "data:image/jpeg;base64," + data.image;
 
 
     container.appendChild(labelElement);
     container.appendChild(resultImg);
-
-
     id("test").appendChild(container);
+    return;
   }
 
   function generateCanvasFromImage(image) {
     let canvas = gen("canvas");
-    canvas.width = imageHeight;
-    canvas.height = imageWidth;
+    canvas.width = imageWidth;
+    canvas.height = imageHeight;
     return canvas;
   }
 
-  function extractImageArea(image, sourceX, sourceY, width, height, callback) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = width;
-    canvas.height = height;
-    context.drawImage(image, sourceX, sourceY, width, height, 0, 0, canvas.width, canvas.height);
-    const extractedImageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-    let extractedImage = new Image();
-    extractedImage.src = canvas.toDataURL();
-    extractedImage.onload = function() {
-      // Check if the callback is a function before calling it
-      if (typeof callback === 'function') {
-        callback(extractedImage);
-      } else {
-        console.error('Invalid callback function.');
-      }
-    };
-  }
-
-
-  function drawRectangle(canvas, x, y, width, height, hex) {
-
-    let canvasWidth = canvas.width;
-    let canvasHeight = canvas.height;
-    const context = canvas.getContext('2d');
-    context.beginPath();
-    context.strokeStyle = hex;
-    context.rect(x*canvasWidth, y*canvasHeight, width*canvasWidth, height*canvasHeight);
-    context.stroke();
-  }
 
   function resizeCanvasToDisplaySize(canvas) {
     // look up the size the canvas is being displayed

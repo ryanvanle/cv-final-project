@@ -110,7 +110,7 @@ def get_streetview_image(request):
         api_key = 'AIzaSyBrihFqby1UCOB9U0pMfSHauXWZlFtLfek'
 
         if latitude and longitude and angle and pov and image_width and image_height:
-            url = f"https://maps.googleapis.com/maps/api/streetview?size={image_width}x{image_height}&location={latitude},{longitude}&heading={angle}&key={api_key}&pov={pov}"
+            url = f"https://maps.googleapis.com/maps/api/streetview?size={image_width}x{image_height}&location={latitude},{longitude}&heading={angle}&key={api_key}&pov={pov}&source=outdoor"
 
             try:
                 # Make a request to the Google Maps Static API

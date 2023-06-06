@@ -21,24 +21,18 @@
     <script src="index.js" type="module"></script>
 </head>
 <body>
-  <h1>CV final project by Ryan and Ashay</h1>
-  <section id="map"></section>
-
-  <section>
-    <h2>Point amount per box, little the better this aint free (;-;), 0.014 per point, 1-20</h2>
-    <input type="number" id="point-amount" name="point-amount"
-    min="1" max="20" value="1">
-    <button id="data">data</button>
-    <button id="submit">submit</button>
+  <section id="main-screen">
+    <section id="map"></section>
+    <h2>Draw rectangle(s) on the map of areas you want to observe</h2>
+    <h3>List the amount of observe points you want below</h3>
+    <section id="main-input">
+      <input type="number" id="point-amount" name="point-amount"
+      min="1" max="20" value="1">
+      <button id="submit">submit</button>
+    </section>
   </section>
-  <section id="test">
-
-  </section>
-  <!-- <section id="input-canvas-container">
-    <canvas id="input-canvas"></canvas>
-  </section> -->
-
  <section id="streetview-container">
+  <h2>Identifying</h3>
   <!-- <section class="main-container">
     <h2>lat: 49.54424076995246, long: -114.02747385778498</h2>
 
@@ -57,8 +51,11 @@
   </section> -->
  </section>
 
+ <section id="test">
+  <h2>Results</h3>
 
- <!-- <img id="test" src="img/streetview (1).jpeg" width="600" height="400"> -->
+ </section>
+
 
 
 </body>
