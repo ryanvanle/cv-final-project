@@ -1,7 +1,8 @@
 body {
-  width: 100vw;
-  height: 100vh;
-  margin:0
+  margin:0;
+  font-family: 'Roboto', sans-serif;
+  scroll-behavior: smooth;
+
 }
 
 #main-screen {
@@ -21,8 +22,9 @@ body {
 }
 
 #map {
-  height: 85vh; /* The height is 400 pixels */
+  height: 80vh; /* The height is 400 pixels */
   width: 100%; /* The width is the width of the web page */
+  border-bottom: black solid;
 }
 
 .delete-button {
@@ -37,10 +39,13 @@ body {
 }
 
 #main-input {
-  margin-top: 0.75rem;
+  /* margin-top: 0.75rem; */
   display: flex;
+  margin-top: -2vh;
+
   align-items: center;
   justify-content: center;
+  height: 15vh;
 }
 
 #main-input button, #main-input input {
@@ -75,10 +80,19 @@ body {
 }
 
 #streetview-container {
+  padding: 2rem;
+  margin-top: 2%;
   display: flex;
-  width: 100%;
   flex-direction: column;
+  justify-content: center;
   flex-wrap: nowrap;
+  margin-left: 1.5%;
+  margin-right: 1.5%;
+  padding-left: 5%;
+  padding-right: 5%;
+  padding-bottom: 5%;
+  border: black solid;
+  text-align: center;
 }
 
 #streetview-container img {
@@ -90,14 +104,15 @@ body {
 
 #streetview-container canvas {
   aspect-ratio: 6 / 4;
-
   width: 300px;
   height: 200px;
-
 }
 
 .main-container {
-  margin-bottom: 15%;
+  border: black solid;
+  padding-bottom: 18%;
+  margin-bottom: 2%;
+  font-size: 1.5rem;
   /* display: flex;
   flex-direction: column; */
 }
@@ -113,6 +128,7 @@ body {
 
 .container-wrapper {
   position: relative;
+  display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   align-items: center;
@@ -128,4 +144,83 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+}
+
+#results {
+  margin-top: 3rem;
+  border: black solid;
+  margin-left: 1.5%;
+  margin-right: 1.5%;
+  padding-left: 5%;
+  padding-right: 5%;
+  padding-bottom: 5%;
+}
+
+#results h2, #streetview-container h2  {
+  font-size: 2.5rem;
+  text-align: center;
+}
+
+
+#streetview-container h2  {
+  margin-top: 0;
+}
+
+#streetview-container h3 {
+  text-align: left;
+}
+
+
+.test {
+  border: black solid;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  padding-bottom: 1.5rem;
+}
+
+.test img {
+  width: 25vw;
+  height: 15vw;
+  object-fit: cover;
+}
+
+.test h3 {
+  width: 100%;
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 0;
+}
+
+.test h4 {
+  font-size: 1.25rem;
+}
+
+#background {
+  background-image: url(img/loading.gif);
+}
+
+#submit {
+  background-color: #9999;
+  font-weight: bold;
+  border-width: 3px;
+}
+
+#charts {
+  border: black solid;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 1.5rem;
+}
+
+.loading {
+  padding: 10%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url(img/loading.gif);
 }

@@ -17,8 +17,10 @@
   let containerID = 0;
   let pointToResults = new Map();
 
-  const imageWidth = 300;
-  const imageHeight = 200;
+  let predictionData = {};
+
+  const imageWidth = 600;
+  const imageHeight = 400;
 
   function init() {
     detector = ml5.objectDetector('coco', {}, function() {
@@ -27,41 +29,51 @@
     });
 
     initMap();
-    // id("data").addEventListener("click", function() {
-    //   let img = gen("img");
-    //   img.src = "img/tesla.jpeg";
 
-    //   img.crossOrigin = "anonymous";
-    //   img.onload = async function() {
-    //     let imagePath = img.src;
-    //     let apiURL = "http://localhost:8001/predict/";
+    id("delete").addEventListener("click", function() {
+      deleteAllRectangles();
+    });
 
-    //     let formData = new FormData();
-    //     formData.append("image_url", imagePath);
+    id("submit").addEventListener("click", async function() {
+      id("streetview-container").innerHTML = `<h2>Identifying</h2>`;
+      id("results").innerHTML = `<h2>Results</h2>`;
+      let dataVisSection = gen("section");
+      dataVisSection.id = "charts";
+      let chartsTitle = gen("h3");
+      chartsTitle.textContent = "Charts";
+      dataVisSection.append(chartsTitle);
+      let loading = gen("section");
+      loading.classList.add("loading");
+      dataVisSection.append(loading);
+      id("results").append(dataVisSection);
+      predictionData = {};
+      id("delete").disabled = false;
+      id("submit").disabled = false;
 
-    //     let data = await fetch(apiURL, {
-    //       method: "POST",
-    //       body: formData
-    //     })
-    //       .then(res => res.json())
-    //       .catch(handleError);
-
-    //     let resultImg = gen("img");
-    //     resultImg.src = "data:image/jpeg;base64," + data.image;
-    //     id("streetview-container").appendChild(resultImg);
-
-    //     console.log(data);
-    //   };
-
-    //   id("streetview-container").appendChild(img);
-    // });
-
-    id("submit").addEventListener("click", function() {
       for (let i = 0; i < rectanglesWithPoints.length; i++) {
+        let rectangleTitle1 = gen("h3");
+        rectangleTitle1.textContent = `Area ${i + 1}`;
+        let rectangleTitle2 = gen("h3");
+        rectangleTitle2.textContent = `Area ${i + 1}`;
+
+        id("streetview-container").appendChild(rectangleTitle1);
+
+        let resultsCars = gen("section");
+        resultsCars.classList.add("test");
+
+        id("results").appendChild(rectangleTitle2);
+        id("results").appendChild(resultsCars);
+
+
         for (let j = 0; j < rectanglesWithPoints[i].points.length; j++) {
-          create360StaticStreetViewImage(rectanglesWithPoints[i].points[j]);
+          await create360StaticStreetViewImage(rectanglesWithPoints[i].points[j], i);
         }
       }
+
+      setTimeout(generateDataCharts, 18 * 1000) // i couldnt figure out how to make this run after the for loops :(
+      id("delete").disabled = true;
+      id("submit").disabled = true;
+
     });
   }
 
@@ -96,20 +108,6 @@
     });
 
     drawingManager.setMap(map);
-
-    // Add an event listener for when the rectangle is complete
-    // google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
-    //     let bounds = rectangle.getBounds();
-    //     let north = bounds.getNorthEast().lat();
-    //     let south = bounds.getSouthWest().lat();
-    //     let east = bounds.getNorthEast().lng();
-    //     let west = bounds.getSouthWest().lng();
-
-    //     console.log("North: " + north);
-    //     console.log("South: " + south);
-    //     console.log("East: " + east);
-    //     console.log("West: " + west);
-    // });
 
     google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {
 
@@ -234,6 +232,27 @@
     });
   }
 
+  function deleteAllRectangles() {
+    // Remove each rectangle and associated markers
+    rectanglesWithPoints.forEach(function(rectangleWithPoints) {
+      rectangleWithPoints.rectangle.setMap(null); // Remove the rectangle from the map
+
+      // Remove the associated markers
+      rectangleWithPoints.markers.forEach(function(marker) {
+        marker.setMap(null);
+      });
+    });
+
+    // Clear the rectanglesWithPoints array
+    rectanglesWithPoints = [];
+
+    // Clear the results and streetview-container elements
+    let deleteButtons = qsa(".delete-button");
+    deleteButtons.forEach(function (element) { element.remove(); });
+    id("streetview-container").innerHTML = `<h2>Identifying</h2>`;
+    id("results").innerHTML = `<h2>Results</h2>`;
+  }
+
   function evenlySpreadPoints(bounds, numPoints) {
     let ne = bounds.getNorthEast();
     let sw = bounds.getSouthWest();
@@ -299,7 +318,10 @@
   }
 
 
-  async function create360StaticStreetViewImage(point) {
+  async function create360StaticStreetViewImage(point, rectangleIndex) {
+    return new Promise((resolve, reject) => {
+
+
     const apiUrl = "http://localhost:8001/streetview/";
     const container = document.getElementById('streetview-container');
 
@@ -318,11 +340,12 @@
     let canvasContainer = gen("section");
     canvasContainer.classList.add("canvas-container");
 
-    let coordsTitle = gen("h2");
-    coordsTitle.textContent = `lat: ${point.lat()}, long: ${point.lng()}`
+    let coordsTitle = gen("h4");
+    coordsTitle.textContent = `lat: ${point.lat()}, long: ${point.lng()}`;
+
     mainContainer.appendChild(coordsTitle);
     let images = [];
-    let imageCount = 0;
+    const imagePromises = [];
 
     for (let angle = 0; angle < 360; angle += 90) {
       let pov = 90;
@@ -336,97 +359,104 @@
       });
 
       const imageUrl = `${apiUrl}?${params}`;
-      let request = await fetch(imageUrl)
-      .then(statusCheck)
-      .then(res => {return res})
-      .catch(handleError);
 
+      const imagePromise = new Promise((resolve, reject) => {
+        let image = document.createElement("img");
+        image.src = imageUrl;
+        image.width = imageWidth;
+        image.height = imageHeight;
+        image.crossOrigin = "anonymous";
+        imageContainer.appendChild(image);
 
+        image.onload = function() {
+          resolve();
+        };
 
-      // Create an image element and set the source to the Street View image URL
-      let image = document.createElement("img");
-      // image.src = "img/streetview (1).jpeg";
-      image.src = request.url;
-      image.width = imageWidth;
-      image.height = imageHeight;
-      image.crossOrigin = "anonymous";
-      imageContainer.appendChild(image);
-      let canvas = gen("canvas");
-      canvas.width = imageWidth;
-      canvas.height = imageHeight;
+        image.onerror = function() {
+          reject(new Error("Failed to load image: " + imageUrl));
+        };
 
-      image.onload = async function() {
-        detector.detect(image, async function(error, results) {
-          if (error) {
-            console.error(error);
-            return;
-          }
+        images.push(image);
+      });
 
-
-          let cars = [];
-          // get only cars
-          for (let i = 0; i < results.length; i++) {
-            let label = results[i]['label'];
-            let confidence = results[i]['confidence'];
-            if (label === "car" && confidence > 0.6) cars.push(results[i]);
-          }
-
-          for (let i = 0; i < cars.length; i++) {
-
-            let x = cars[i].normalized.x;
-            let y = cars[i].normalized.y;
-            let width = cars[i].normalized.width;
-            let height = cars[i].normalized.height;
-
-            let xModify = -0.05;
-            let yModify = -0.05;
-            let widthModify = 0.1;
-            let heightModify = 0.1;
-
-            // adjusted normalized
-            let xNew = x + xModify;
-            let yNew = y + yModify;
-            let widthNew = width + widthModify;
-            let heightNew = height + heightModify;
-
-            // Clamp the adjusted normalized values to stay within the range [0, 1]
-            xNew = Math.max(0, Math.min(xNew, 1));
-            yNew = Math.max(0, Math.min(yNew, 1));
-            widthNew = Math.max(0, Math.min(widthNew, 1 - xNew));
-            heightNew = Math.max(0, Math.min(heightNew, 1 - yNew));
-
-
-            // scaled up with canvas;
-            let xScaled = xNew * imageWidth;
-            let yScaled = yNew * imageHeight;
-            let widthScaled = widthNew * imageWidth;
-            let heightScaled = heightNew * imageHeight;
-
-            // Clamp the scaled values to stay within the bounds of the image
-            xScaled = Math.max(0, Math.min(xScaled, imageWidth));
-            yScaled = Math.max(0, Math.min(yScaled, imageHeight));
-            widthScaled = Math.max(0, Math.min(widthScaled, imageWidth - xScaled));
-            heightScaled = Math.max(0, Math.min(heightScaled, imageHeight - yScaled));
-            console.log("gu")
-
-            await drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
-            extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled)
-          }
-
-          canvasContainer.appendChild(canvas);
-
-        });
-      }
-
-      // Append the image element to the container
-      images.push(image);
+      imagePromises.push(imagePromise);
     }
+
+    Promise.all(imagePromises)
+      .then(() => {
+        for (let i = 0; i < images.length; i++) {
+          let image = images[i];
+
+          detector.detect(image, async function(error, results) {
+            let canvas = gen("canvas");
+            canvas.width = imageWidth;
+            canvas.height = imageHeight;
+
+            if (error) {
+              console.error(error);
+              return;
+            }
+
+            let cars = [];
+            for (let i = 0; i < results.length; i++) {
+              let label = results[i]['label'];
+              let confidence = results[i]['confidence'];
+              if (label === "car" && confidence > 0.6) {
+                cars.push(results[i]);
+              }
+            }
+
+            for (let i = 0; i < cars.length; i++) {
+              let x = cars[i].normalized.x;
+              let y = cars[i].normalized.y;
+              let width = cars[i].normalized.width;
+              let height = cars[i].normalized.height;
+
+              let xModify = -0.05;
+              let yModify = -0.05;
+              let widthModify = 0.1;
+              let heightModify = 0.1;
+
+              let xNew = x + xModify;
+              let yNew = y + yModify;
+              let widthNew = width + widthModify;
+              let heightNew = height + heightModify;
+
+              xNew = Math.max(0, Math.min(xNew, 1));
+              yNew = Math.max(0, Math.min(yNew, 1));
+              widthNew = Math.max(0, Math.min(widthNew, 1 - xNew));
+              heightNew = Math.max(0, Math.min(heightNew, 1 - yNew));
+
+              let xScaled = xNew * imageWidth;
+              let yScaled = yNew * imageHeight;
+              let widthScaled = widthNew * imageWidth;
+              let heightScaled = heightNew * imageHeight;
+
+              xScaled = Math.max(0, Math.min(xScaled, imageWidth));
+              yScaled = Math.max(0, Math.min(yScaled, imageHeight));
+              widthScaled = Math.max(0, Math.min(widthScaled, imageWidth - xScaled));
+              heightScaled = Math.max(0, Math.min(heightScaled, imageHeight - yScaled));
+
+              await drawRectangle(canvas, xNew, yNew, widthNew, heightNew, "#F85149");
+              extractImageArea(image, xScaled, yScaled, widthScaled, heightScaled, rectangleIndex);
+            }
+
+            canvasContainer.appendChild(canvas);
+          });
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
 
     flex.appendChild(imageContainer);
     flex.appendChild(canvasContainer);
     wrapper.appendChild(flex);
     mainContainer.appendChild(wrapper);
     container.appendChild(mainContainer);
+
+    resolve()}
+    );
   }
 
   function drawRectangle(canvas, x, y, width, height, hex) {
@@ -436,6 +466,7 @@
       const context = canvas.getContext('2d');
       context.beginPath();
       context.strokeStyle = hex;
+      context.lineWidth = 3.5;
       context.rect(x * canvasWidth, y * canvasHeight, width * canvasWidth, height * canvasHeight);
       context.stroke();
 
@@ -443,7 +474,7 @@
     });
   }
 
-  function extractImageArea(image, sourceX, sourceY, width, height) {
+  function extractImageArea(image, sourceX, sourceY, width, height, rectangleIndex) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = width;
@@ -453,12 +484,10 @@
 
     let extractedImage = new Image();
     extractedImage.src = canvas.toDataURL();
-    predict(extractedImage)
+    predict(extractedImage, rectangleIndex)
   }
 
-
-
-  async function predict(img) {
+  async function predict(img, rectangleIndex) {
     let imagePath = img.src;
     img.crossOrigin = "anonymous"
     let apiURL = "http://localhost:8001/predict/";
@@ -476,7 +505,7 @@
     let container = gen("section");
     container.classList.add("prediction");
 
-    let labelElement = gen("h3");
+    let labelElement = gen("h4");
     let label = data.label;
     labelElement.textContent = label;
     let resultImg = gen("img");
@@ -485,7 +514,20 @@
 
     container.appendChild(labelElement);
     container.appendChild(resultImg);
-    id("test").appendChild(container);
+
+    let rectangles = qsa(".test");
+    let currentRectangle = rectangles[rectangleIndex];
+    currentRectangle.appendChild(container);
+
+    if (predictionData[rectangleIndex] == null)  predictionData[rectangleIndex] = {};
+    let dataObject = predictionData[rectangleIndex];
+
+    if(dataObject[label] == null) {
+      predictionData[rectangleIndex][label] = 1;
+    } else {
+      predictionData[rectangleIndex][label] += 1;
+    }
+
     return;
   }
 
@@ -495,8 +537,6 @@
     canvas.height = imageHeight;
     return canvas;
   }
-
-
 
   function resizeCanvasToDisplaySize(canvas) {
     // look up the size the canvas is being displayed
@@ -513,6 +553,78 @@
     return false;
   }
 
+  function generateDataCharts() {
+    let rectangleAmount = rectanglesWithPoints.length;
+
+    let loading = qs(".loading").style.display = "none";
+
+    let max = 0;
+    for (let i = 0; i < rectangleAmount; i++) {
+      const currentMaxValue = d3.max(Object.values(predictionData[i]));
+      if (currentMaxValue > max) {
+        max = currentMaxValue;
+      }
+    }
+
+    // Bar chart
+    const margin = { top: 30, right: 100, bottom: 100, left: 200 };
+    const width = 800 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    for (let i = 0; i < rectangleAmount; i++) {
+      let data = predictionData[i];
+      if (data == null) alert("null data");
+
+
+      const svg = d3
+        .select("#charts")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const y = d3.scaleBand().range([0, height]).padding(0.1);
+      const x = d3.scaleLinear().range([0, width]);
+
+      y.domain(Object.keys(data));
+      x.domain([0, max]);
+
+      svg
+        .selectAll(".bar")
+        .data(Object.entries(data))
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", 0)
+        .attr("y", (d) => y(d[0]))
+        .attr("width", (d) => x(d[1]))
+        .attr("height", y.bandwidth())
+        .attr("fill", "steelblue");
+
+      svg.append("g").call(d3.axisLeft(y));
+
+      svg
+        .append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
+
+      svg
+        .selectAll("text")
+        .attr("transform", "rotate(0)")
+        .attr("dx", "-0.8em")
+        .attr("dy", "0.15em")
+        .style("text-anchor", "end");
+
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", -margin.top / 2)
+        .attr("text-anchor", "middle")
+        .text(`Area ${i + 1}`);
+
+    }
+
+  }
 
   /**
  * Make sure to always add a descriptive comment above
