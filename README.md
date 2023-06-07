@@ -52,5 +52,10 @@ Are there next steps you would take if you kept working on the project?
   - Adding a past results feature, currently it only does one query and does not save the past query, so adding that saving would be great.
   - We could have better data visualization, currently, we only have bar charts but could add other methods like heatmaps of certain types of cars in areas.
 
+How does your approach differ from others? Was that beneficial?
+  - In selecting our idea for this project, we thought of trying to make something that could actually prove useful to others
+  - We integrated a lot of technologies to make this a fully-functioning application, we definitely believe this is nicer to have as opposed to just displaying model results, charts, etc.
+  - Many other programs/apps that others have written can classify cars given images, but we are able to have that same functionality in addition to being able to see the results per area, and this can prove to be beneficial in many ways like we described in our initial problem description
+  - Our end product satisfies our original goal of identifying the common car makes and models in certain areas :)
 
 
