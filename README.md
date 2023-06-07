@@ -1,5 +1,5 @@
 # Geo Cars
-[Demo Video]([url](https://youtu.be/FaLgU4Q7DB4))
+[Demo Video](https://youtu.be/FaLgU4Q7DB4)
 
 ## Problem description
 The problem we are trying to solve is given a specific area which is the most common car make. Our hypothesis is that in more affluent areas, we might expect nicer, more expensive car brands, whereas, in other areas, they might have different values, such as efficiency. We do not have data to support this, which is why our idea would give us data to back up our claims. This data could also be useful to car manufacturers; for example Tesla would want to build superchargers where people drive Teslas the most.
