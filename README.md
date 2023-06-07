@@ -30,8 +30,9 @@ Stanford car dataset
 
 ## Results
 A sample of an example result we get for around campus
-
-INSERT IMAGES
+![MY_Image](/cv_street.png)
+![MY_Image](/cv_cars.png)
+![MY_Image](/cv_chart.png)
 
 As you can see from a small sample of our example results, our application functions as we intended it to in that we identify the most common car make and model in the area the user selects but there are a good number of inaccuracies. This is partially due to the model not being the best as well as the fact that the Stanford car dataset is quite outdated and does not contain modern cars (cars made after around 2017). There were also some edge cases that were hard for us to implement, such as image borders sometimes not being the right spot, cars appearing far away which made them tough to classify, and cases where multiple cars were right next to each other.
 
