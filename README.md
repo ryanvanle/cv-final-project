@@ -14,7 +14,7 @@ Google Maps API, Google Static Street View API
 Frameworks:
   - ML5 (javascript computer vision framework)
     - YOLO Object Detection
-  - Pytorch (python machine learning framework)
+  - TensorFlow (python machine learning framework)
     - Used in training the car machine learning model
 
 ## Your approach:
